@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="VYBE: a 3D music player for students. Pick a mood and start a mix in one tap. Fictional artists, music generated in the browser.">
+  <meta name="theme-color" content="#07021a">
+  <title>VYBE: Don't just hear it. Feel it.</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="motion.css">
+
+  <!-- Three.js loaded straight from a CDN, so there is no build step -->
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- 3D scene (drawn by scene.js). Sits behind the whole page. -->
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <!-- Fallback background for devices without WebGL or with "reduce motion" on -->
+  <div class="aurora" aria-hidden="true">
+    <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+  </div>
+
+  <!-- ========== TOP BAR ========== -->
+  <header class="topbar" id="topbar">
+    <a class="brand" href="#/" aria-label="VYBE home">
+      <span class="brand-logo" aria-hidden="true">♪</span>
+      <span class="brand-name">VYBE</span>
+    </a>
+
+    <p class="greet" id="greet">Good evening 🌙</p>
+
+    <label class="search">
+      <span class="sr-only">Search songs, albums and artists</span>
+      <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+      <input type="search" id="search" placeholder="Search songs, albums, artists" autocomplete="off">
+    </label>
+
+    <button class="icon-btn" id="open-settings" type="button" aria-label="Open settings: equalizer, 3D quality and backups" aria-controls="settings">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    </button>
+    <div class="account" id="account"></div>
+  </header>
+
+  <!-- ========== SIDEBAR (desktop) ========== -->
+  <aside class="sidebar" aria-label="Library">
+    <nav aria-label="Main">
+      <ul class="side-nav">
+        <li><a href="#/" class="side-link" data-route="home"><span aria-hidden="true">⌂</span> Home</a></li>
+        <li><a href="#/explore" class="side-link" data-route="explore"><span aria-hidden="true">✦</span> Explore</a></li>
+        <li><a href="#/world" class="side-link" data-route="world"><span aria-hidden="true">🌍</span> World</a></li>
+        <li><a href="#/artists" class="side-link" data-route="artists"><span aria-hidden="true">☺</span> Artists</a></li>
+        <li><a href="#/library" class="side-link" data-route="library"><span aria-hidden="true">♥</span> Library <b id="liked-badge">0</b></a></li>
+        <li><a href="#/profile" class="side-link" data-route="profile" id="side-profile"><span aria-hidden="true">👤</span> Profile</a></li>
+      </ul>
+    </nav>
+    <div class="side-mixes">
+      <p class="side-label">Your mixes</p>
+      <div id="side-mixes"></div>
+    </div>
+  </aside>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <!-- ================= PAGE: HOME ================= -->
+    <div class="page" data-page="home">
+    <!-- ========== HERO ========== -->
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <p class="pill"><span class="pill-dot"></span> <span id="stat-line">80 songs · 10 vibes · zero ads</span></p>
+      <h1 id="hero-title">
+        <span class="line">Don't just</span>
+        <span class="line"><span class="grad">hear it.</span></span>
+        <span class="line"><span class="outline">Feel it.</span></span>
+      </h1>
+      <p class="hero-sub">
+        Every mood has a sound, and now it has a colour too. Tap a vibe, turn it up,
+        and watch your music come alive in 3D.
+      </p>
+
+      <div class="vibe-check">
+        <p class="vibe-q">vibe check ✨ <span>what's the mood rn?</span></p>
+        <div class="vibes" id="vibes" role="group" aria-label="Start a mood mix"></div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-lime" id="hero-play" type="button">▶&#xFE0E; Shuffle all songs</button>
+        <a class="btn btn-ghost" href="#/world">🌍 Explore world sounds</a>
+      </div>
+    </section>
+
+    <!-- Gen Z marquee -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>no skips 🔥 it's giving main character ✨ lowkey obsessed 🫶 understood the assignment ✅ villain era 😈 sad girl hours 💔 vibe check passed 💯 on repeat 🔁&nbsp;</span>
+        <span>no skips 🔥 it's giving main character ✨ lowkey obsessed 🫶 understood the assignment ✅ villain era 😈 sad girl hours 💔 vibe check passed 💯 on repeat 🔁&nbsp;</span>
+      </div>
+    </div>
+
+    <!-- personalised row (only when a demo profile is signed in) -->
+    <section class="shelf" id="for-you" aria-labelledby="for-you-title" hidden>
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow" id="for-you-sub">Based on your vibe</p>
+          <h2 id="for-you-title">Made for you</h2>
+        </div>
+        <button class="btn btn-hot" id="play-for-you" type="button">▶&#xFE0E; Play mix</button>
+      </div>
+      <ol class="quick-grid" id="for-you-list"></ol>
+    </section>
+
+    <!-- ========== SPOTLIGHT BANNER ========== -->
+    <section class="spotlight" id="spotlight" aria-labelledby="spot-title">
+      <img class="spot-bg" id="spot-bg" src="" alt="" onerror="this.style.opacity=0">
+      <div class="spot-text">
+        <p class="eyebrow">🏆 Album of the week</p>
+        <h2 id="spot-title">Mirrorball Season</h2>
+        <p class="spot-sub" id="spot-sub">Noor &amp; the Neons</p>
+        <p class="spot-quote">"Four songs. Zero skips. Pure dance-floor serotonin."</p>
+        <div class="spot-actions">
+          <button class="btn btn-light" id="spot-play" type="button">▶&#xFE0E; Play now</button>
+          <button class="btn btn-ghost" id="spot-save" type="button">♡ Save all songs</button>
+        </div>
+      </div>
+      <div class="spot-stage" aria-hidden="true">
+        <div class="spot-disc"><img id="spot-disc-img" src="" alt="" onerror="this.style.opacity=0"></div>
+        <div class="spot-cover"><img id="spot-cover-img" src="" alt="" onerror="this.style.opacity=0"></div>
+      </div>
+    </section>
+
+    <!-- ========== TRENDING ========== -->
+    <section class="shelf" id="trending" aria-labelledby="trending-title">
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow">Everyone's on repeat</p>
+          <h2 id="trending-title">Trending now 🔥</h2>
+        </div>
+      </div>
+      <ol class="trending" id="trending-list"></ol>
+    </section>
+
+    <!-- ========== QUICK PICKS ========== -->
+    <section class="shelf" id="quick" aria-labelledby="quick-title">
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow">Start radio from a song</p>
+          <h2 id="quick-title">Quick picks</h2>
+        </div>
+      </div>
+      <ol class="quick-grid" id="quick-grid"></ol>
+      <p class="empty" id="quick-empty" hidden>No songs match. Try another search or vibe.</p>
+    </section>
+
+    </div>
+
+    <!-- ================= PAGE: EXPLORE ================= -->
+    <div class="page" data-page="explore" hidden>
+      <header class="page-head">
+        <p class="eyebrow">10 moods · 20 albums · 80 songs</p>
+        <h1 class="page-title" tabindex="-1" data-m-split>Explore moods &amp; eras</h1>
+      </header>
+    <!-- ========== MOOD CHIPS (sticky) ========== -->
+    <div class="chips" id="chips" role="group" aria-label="Filter by mood"></div>
+    <p class="sr-only" id="count" aria-live="polite"></p>
+
+    <!-- ========== MOODS & ERAS (tiles) ========== -->
+    <section class="shelf" id="eras" aria-labelledby="eras-title">
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow">Pick your era</p>
+          <h2 id="eras-title">Moods &amp; eras</h2>
+        </div>
+      </div>
+      <ul class="tiles" id="tiles"></ul>
+    </section>
+
+      <div id="mood-shelves"></div>
+      <p class="empty" id="album-empty" hidden>No albums match. Try another vibe.</p>
+    </div>
+
+    <!-- ================= PAGE: WORLD ================= -->
+    <div class="page" data-page="world" hidden>
+    <!-- ========== AROUND THE WORLD ========== -->
+    <section class="shelf" id="world" aria-labelledby="world-title">
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow">Passport not required</p>
+          <h1 class="page-title" id="world-title" tabindex="-1" data-m-split>Around the world 🌍</h1>
+          <p class="lede">Sufi nights in Lahore, dhol in Punjab, Baul songs on the Padma, Euro dance, oud, amapiano, reggaeton and K-pop.
+            Every region has its own rhythm, scale and instruments, all generated live in your browser.</p>
+        </div>
+      </div>
+      <ul class="tiles world-tiles" id="world-tiles"></ul>
+      <p class="world-note">🎧 Got real songs from home? Add them in <a href="#/library">Your music</a> and they'll play right here.</p>
+    </section>
+
+      <div id="world-shelves"></div>
+    </div>
+
+    <!-- ================= PAGE: ARTISTS ================= -->
+    <div class="page" data-page="artists" hidden>
+    <section class="shelf" id="artists" aria-labelledby="artists-title">
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow">Fictional artists · tap one to open their page</p>
+          <h1 class="page-title" id="artists-title" tabindex="-1" data-m-split>Artists you'll stan</h1>
+        </div>
+      </div>
+      <ul class="artist-grid" id="artist-row"></ul>
+    </section>
+    </div>
+
+    <!-- ================= PAGE: ONE ARTIST ================= -->
+    <div class="page" data-page="artist" hidden>
+      <div id="artist-page"></div>
+    </div>
+
+    <!-- ================= PAGE: LIBRARY ================= -->
+    <div class="page" data-page="library" hidden>
+      <header class="page-head">
+        <p class="eyebrow" id="library-sub">Saved on this device</p>
+        <h1 class="page-title" tabindex="-1" data-m-split>Your library</h1>
+      </header>
+    <!-- ========== LIKED SONGS ========== -->
+    <section class="shelf" id="liked" aria-labelledby="liked-title">
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow">Saved in this browser</p>
+          <h2 id="liked-title">Liked songs</h2>
+        </div>
+        <button class="btn btn-hot" id="play-liked" type="button" hidden>▶&#xFE0E; Play all</button>
+      </div>
+      <p class="notice" id="storage-warning" hidden>⚠️ Your browser is blocking storage (private mode?). Likes will be lost when you close this tab.
+        Use <button class="link-btn" type="button" data-open-settings>Settings → Backup</button> to export them.</p>
+      <ol class="quick-grid" id="liked-list"></ol>
+      <p class="empty" id="liked-empty">♡ Tap the heart on any song to save it here. Build your own playlist.</p>
+    </section>
+
+    <!-- ========== YOUR MUSIC (uploads) ========== -->
+    <section class="shelf" id="mine" aria-labelledby="mine-title">
+      <div class="shelf-head">
+        <div>
+          <p class="eyebrow">Real songs, full quality</p>
+          <h2 id="mine-title">Your music 🎧</h2>
+        </div>
+        <button class="btn btn-hot" id="play-mine" type="button" hidden>▶&#xFE0E; Play all</button>
+      </div>
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file-input" accept="audio/*" multiple>
+        <span class="drop-icon" aria-hidden="true">⬆</span>
+        <span class="drop-text"><strong>Add your own songs</strong>Drop MP3, WAV, OGG or M4A files here, or click to choose.
+          They stay on this device (saved in your browser), play through the equalizer, and the 3D orb dances to them.</span>
+      </label>
+      <ol class="quick-grid" id="mine-list"></ol>
+    </section>
+
+    </div>
+
+    <!-- ================= PAGE: SEARCH ================= -->
+    <div class="page" data-page="search" hidden>
+      <header class="page-head">
+        <p class="eyebrow">Search results</p>
+        <h1 class="page-title" id="search-title" tabindex="-1">Search</h1>
+      </header>
+      <section class="shelf" aria-labelledby="sr-songs">
+        <h2 id="sr-songs">Songs</h2>
+        <ol class="quick-grid" id="search-songs"></ol>
+      </section>
+      <section class="shelf" aria-labelledby="sr-albums">
+        <h2 id="sr-albums">Albums</h2>
+        <ul class="album-grid" id="search-albums"></ul>
+      </section>
+      <p class="empty" id="search-empty" hidden>Nothing found. Try "lahore", "sad", "party" or an artist name.</p>
+    </div>
+
+    <!-- ================= PAGE: SIGN UP ================= -->
+    <div class="page" data-page="signup" hidden>
+      <section class="auth">
+        <div class="auth-card">
+          <p class="eyebrow" id="su-eyebrow">Join VYBE · free forever</p>
+          <h1 class="page-title" id="su-title" tabindex="-1">Create your vibe profile</h1>
+          <p class="auth-note">🔒 <strong>Demo profile:</strong> no email and no password. It's saved only on this device, so please use a nickname, not your real name.</p>
+          <form id="signup-form" novalidate>
+            <div class="field">
+              <label for="su-name">Nickname</label>
+              <input id="su-name" name="nickname" maxlength="20" autocomplete="nickname" placeholder="e.g. lofi_queen" aria-describedby="su-name-help su-name-err" required>
+              <small id="su-name-help">2–20 characters. Letters, numbers, spaces, . _ -</small>
+              <small class="field-err" id="su-name-err" aria-live="polite"></small>
+            </div>
+            <fieldset class="field">
+              <legend>Pick an avatar</legend>
+              <div class="avatars" id="su-avatars"></div>
+            </fieldset>
+            <fieldset class="field">
+              <legend>Your main vibe</legend>
+              <div class="pick" id="su-mood"></div>
+            </fieldset>
+            <fieldset class="field">
+              <legend>Home sound <span class="opt">(optional)</span></legend>
+              <div class="pick" id="su-region"></div>
+            </fieldset>
+            <button class="btn btn-hot btn-big" id="su-submit" type="submit">Create profile ✨</button>
+          </form>
+          <p class="auth-switch" id="su-switch">Already have a profile on this device? <a href="#/signin">Sign in</a></p>
+        </div>
+        <div class="auth-art" aria-hidden="true">
+          <div class="auth-disc"><span id="su-preview-avatar">🎧</span></div>
+          <p class="auth-preview"><strong id="su-preview-name">your name here</strong><span id="su-preview-vibe">pick a vibe ✨</span></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= PAGE: SIGN IN ================= -->
+    <div class="page" data-page="signin" hidden>
+      <section class="auth auth-center">
+        <div class="auth-card wide">
+          <p class="eyebrow">Welcome back</p>
+          <h1 class="page-title" tabindex="-1" data-m-split>Who's listening?</h1>
+          <p class="auth-note">🔒 Demo sign-in: pick a profile saved on this device. No password needed, because nothing is ever sent to a server.</p>
+          <ul class="profile-picker" id="profile-picker"></ul>
+          <p class="empty" id="no-profiles" hidden>No profiles on this device yet.</p>
+          <div class="auth-actions">
+            <a class="btn btn-hot" href="#/signup">＋ Create a new profile</a>
+            <a class="btn btn-ghost" href="#/" id="guest-btn">Continue as guest</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= PAGE: PROFILE ================= -->
+    <div class="page" data-page="profile" hidden>
+      <div id="profile-page"></div>
+    </div>
+
+    <footer class="footer">
+      <p><strong>VYBE is a student prototype</strong>, inspired by music streaming apps. All artists, albums and
+        songs are fictional, and the music is generated in your browser.</p>
+      <p>Photos from <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a> (Unsplash License).
+        3D by <a href="https://threejs.org" target="_blank" rel="noopener">Three.js</a> (MIT).
+        ACM MAJU Vibe Coding Competition 2026.</p>
+    </footer>
+  </main>
+
+  <!-- ========== MOBILE TAB BAR ========== -->
+  <nav class="tabbar" aria-label="Main">
+    <a href="#/" data-route="home"><span aria-hidden="true">⌂</span>Home</a>
+    <a href="#/explore" data-route="explore"><span aria-hidden="true">✦</span>Explore</a>
+    <a href="#/world" data-route="world"><span aria-hidden="true">🌍</span>World</a>
+    <a href="#/library" data-route="library"><span aria-hidden="true">♥</span>Library</a>
+    <a href="#/profile" data-route="profile" id="tab-profile"><span aria-hidden="true" id="tab-avatar">👤</span>Profile</a>
+  </nav>
+
+  <!-- ========== PLAYER BAR ========== -->
+  <section class="player" id="player" aria-label="Music player">
+    <div class="progress" aria-hidden="true"><span id="progress-fill"></span></div>
+    <p class="player-idle" id="player-idle">Pick a mood or press play on any song to start listening.</p>
+
+    <div class="player-main" id="player-main" hidden>
+      <div class="buttons">
+        <button class="ctrl ctrl-sm" id="shuffle" type="button" aria-pressed="false" aria-label="Shuffle">🔀&#xFE0E;</button>
+        <button class="ctrl" id="prev" type="button" aria-label="Previous song">⏮&#xFE0E;</button>
+        <button class="ctrl ctrl-main" id="play" type="button" aria-label="Pause">❚❚</button>
+        <button class="ctrl" id="next" type="button" aria-label="Next song">⏭&#xFE0E;</button>
+        <button class="ctrl ctrl-sm" id="repeat" type="button" aria-label="Repeat: all">🔁&#xFE0E;</button>
+        <span class="time"><span id="time-now">0:00</span> / <span id="time-total">0:00</span></span>
+      </div>
+
+      <div class="now">
+        <button class="now-open" id="now-open" type="button" aria-label="Open full-screen player with lyrics">
+          <img id="now-img" src="" alt="" onerror="this.style.opacity=0" onload="this.style.opacity=1">
+          <span class="now-text">
+            <strong id="now-title">Song</strong>
+            <span id="now-artist">Artist</span>
+          </span>
+          <span class="now-expand" aria-hidden="true">⤢</span>
+        </button>
+        <button class="like" id="now-like" type="button" aria-pressed="false" aria-label="Like this song">♡</button>
+      </div>
+
+      <div class="extra">
+        <input type="range" id="seek" min="0" max="100" value="0" aria-label="Seek">
+        <button class="eq-btn" type="button" data-open-settings aria-label="Open equalizer">EQ</button>
+        <label class="volume">
+          <span aria-hidden="true">🔊</span>
+          <span class="sr-only">Volume</span>
+          <input type="range" id="volume" min="0" max="100" value="70">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== FULL-SCREEN NOW PLAYING ========== -->
+  <div class="np" id="np" role="dialog" aria-modal="true" aria-labelledby="np-title" hidden>
+    <img class="np-bg" id="np-bg" src="" alt="" onerror="this.style.opacity=0">
+    <button class="np-close" id="np-close" type="button" aria-label="Close full-screen player">⌄</button>
+    <div class="np-inner">
+      <div class="np-stage" id="np-stage" aria-hidden="true">
+        <div class="np-card np-card-l"><img id="np-prev-img" src="" alt="" onerror="this.style.opacity=0"></div>
+        <div class="np-card np-card-r"><img id="np-next-img" src="" alt="" onerror="this.style.opacity=0"></div>
+        <div class="np-disc"><img id="np-img" src="" alt="" onerror="this.style.opacity=0"><span class="np-hole"></span></div>
+      </div>
+      <div class="np-info">
+        <h2 id="np-title">Song</h2>
+        <p id="np-meta">Artist</p>
+        <div class="np-tabs" role="tablist" aria-label="Song details">
+          <button class="np-tab" role="tab" data-tab="next" aria-selected="false" type="button">Up next</button>
+          <button class="np-tab" role="tab" data-tab="lyrics" aria-selected="true" type="button">Lyrics</button>
+          <button class="np-tab" role="tab" data-tab="about" aria-selected="false" type="button">About</button>
+        </div>
+        <div class="np-panel" id="np-panel" role="tabpanel" tabindex="0"></div>
+        <div class="np-controls">
+          <span id="np-time">0:00</span>
+          <div class="np-bar"><span id="np-fill"></span></div>
+          <span id="np-total">0:00</span>
+        </div>
+        <div class="np-buttons">
+          <button class="ctrl" id="np-prev" type="button" aria-label="Previous song">⏮&#xFE0E;</button>
+          <button class="ctrl ctrl-main" id="np-play" type="button" aria-label="Pause">❚❚</button>
+          <button class="ctrl" id="np-next" type="button" aria-label="Next song">⏭&#xFE0E;</button>
+          <button class="like" id="np-like" type="button" aria-pressed="false" aria-label="Like this song">♡</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SETTINGS DRAWER ========== -->
+  <div class="drawer-backdrop" id="settings-backdrop" hidden></div>
+  <aside class="drawer" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <div class="drawer-head">
+      <h2 id="settings-title">Settings</h2>
+      <button class="np-close drawer-close" id="settings-close" type="button" aria-label="Close settings">✕</button>
+    </div>
+
+    <section class="set" aria-labelledby="set-eq">
+      <h3 id="set-eq">🎚 Equalizer</h3>
+      <div class="presets" role="group" aria-label="Equalizer presets"></div>
+      <div class="eq" id="eq"></div>
+      <label class="toggle"><input type="checkbox" id="crackle" checked> <span>Vinyl crackle on lo-fi songs</span></label>
+    </section>
+
+    <section class="set" aria-labelledby="set-3d">
+      <h3 id="set-3d">✨ 3D quality &amp; battery</h3>
+      <div class="seg" role="radiogroup" aria-label="3D quality" id="quality">
+        <label><input type="radio" name="quality" value="auto"><span>Auto</span></label>
+        <label><input type="radio" name="quality" value="high"><span>High</span></label>
+        <label><input type="radio" name="quality" value="low"><span>Battery saver</span></label>
+        <label><input type="radio" name="quality" value="off"><span>Off</span></label>
+      </div>
+      <p class="set-note" id="quality-note">Auto switches to battery saver when your battery is low or the frame rate drops.</p>
+      <p class="set-stat" id="fps">3D: starting…</p>
+      <h3 class="set-sub">🎬 Animations</h3>
+      <div class="seg seg-2" role="radiogroup" aria-label="Animations" id="motion-mode">
+        <label><input type="radio" name="motion" value="full"><span>Full motion</span></label>
+        <label><input type="radio" name="motion" value="calm"><span>Calm</span></label>
+      </div>
+      <p class="set-note">Calm turns off parallax, page transitions and moving text. It switches on automatically if your device has "reduce motion" enabled.</p>
+    </section>
+
+    <section class="set" aria-labelledby="set-backup">
+      <h3 id="set-backup">💾 Backup your liked songs</h3>
+      <p class="set-note" id="storage-status"></p>
+      <div class="set-buttons">
+        <button class="btn btn-ghost" id="export-likes" type="button">⬇ Export file</button>
+        <label class="btn btn-ghost file-btn">⬆ Import file<input type="file" id="import-likes" accept="application/json,.json"></label>
+        <button class="btn btn-ghost" id="share-likes" type="button">🔗 Copy share link</button>
+      </div>
+      <p class="set-note">A share link carries your playlist in the URL, so you can open it on another device or send it to a friend. No account needed.</p>
+    </section>
+
+    <section class="set" aria-labelledby="set-sleep">
+      <h3 id="set-sleep">😴 Sleep timer</h3>
+      <div class="seg" role="radiogroup" aria-label="Sleep timer" id="sleep">
+        <label><input type="radio" name="sleep" value="0" checked><span>Off</span></label>
+        <label><input type="radio" name="sleep" value="15"><span>15 min</span></label>
+        <label><input type="radio" name="sleep" value="30"><span>30 min</span></label>
+        <label><input type="radio" name="sleep" value="60"><span>1 hour</span></label>
+      </div>
+      <p class="set-stat" id="sleep-status"></p>
+    </section>
+  </aside>
+
+  <p class="sr-only" id="announce" aria-live="polite"></p>
+
+  <script src="motion.js"></script>
+  <script src="audio.js"></script>
+  <script src="script.js"></script>
+  <script type="module" src="scene.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+/* =====================================================
+   VYBE MOTION SYSTEM: tokens + reusable motion classes
+   Naming: --m-*  tokens · .m-*  motion classes · data-m-*  hooks for motion.js
+   Only transform / opacity / translate are animated (GPU-friendly).
+   ===================================================== */
+:root {
+  /* durations */
+  --m-dur-xs: 120ms;   /* press feedback */
+  --m-dur-s: 220ms;    /* hovers, toggles */
+  --m-dur-m: 420ms;    /* small entrances */
+  --m-dur-l: 760ms;    /* section reveals */
+  --m-dur-xl: 1100ms;  /* hero / page headlines */
+  /* easings */
+  --m-ease-out: cubic-bezier(0.16, 1, 0.3, 1);         /* "expo out": the house curve */
+  --m-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --m-ease-in: cubic-bezier(0.7, 0, 0.84, 0);           /* exits only */
+  --m-ease-spring: linear(0, 0.25 7%, 0.7 15%, 1.04 24%, 1.12 31%, 1.06 40%, 0.99 52%, 1.01 66%, 1);
+  /* distances + stagger */
+  --m-rise: 28px;
+  --m-stagger: 45ms;
+}
+/* Calm mode (set by Settings or by the OS "reduce motion" switch) */
+html.m-calm { --m-rise: 0px; --m-stagger: 0ms; --m-dur-l: 300ms; --m-dur-xl: 300ms; }
+
+/* ---------- 1. Header reveal (runs once on load) ---------- */
+.topbar > * { animation: m-drop var(--m-dur-l) var(--m-ease-out) both; }
+.topbar > *:nth-child(2) { animation-delay: 60ms; }
+.topbar > *:nth-child(3) { animation-delay: 120ms; }
+.topbar > *:nth-child(4) { animation-delay: 180ms; }
+.topbar > *:nth-child(5) { animation-delay: 240ms; }
+.brand-logo { animation: m-spin-in 1s var(--m-ease-spring) 0.1s both, shift 4s linear infinite; }
+.side-nav li, .side-mixes { animation: m-slide-in var(--m-dur-l) var(--m-ease-out) both; }
+.side-nav li:nth-child(2) { animation-delay: 40ms; }
+.side-nav li:nth-child(3) { animation-delay: 80ms; }
+.side-nav li:nth-child(4) { animation-delay: 120ms; }
+.side-nav li:nth-child(5) { animation-delay: 160ms; }
+.side-nav li:nth-child(6) { animation-delay: 200ms; }
+.side-mixes { animation-delay: 260ms; }
+.player { animation: m-rise-up var(--m-dur-l) var(--m-ease-out) 0.3s both; }
+@keyframes m-drop { from { opacity: 0; transform: translateY(-18px); } }
+@keyframes m-slide-in { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes m-rise-up { from { opacity: 0; transform: translateY(40px); } }
+@keyframes m-spin-in { from { opacity: 0; transform: rotate(-180deg) scale(0.3); } }
+
+/* ---------- 2. Scroll reveals ---------- */
+/* .m-reveal = one element fades/rises in; .m-stagger = its children cascade in */
+.m-reveal:not(.is-in) { opacity: 0; translate: 0 var(--m-rise); }
+.m-reveal.is-in { opacity: 1; translate: 0 0; transition: opacity var(--m-dur-l) var(--m-ease-out), translate var(--m-dur-l) var(--m-ease-out); }
+.m-stagger:not(.is-in) > * { opacity: 0; translate: 0 var(--m-rise); scale: 0.97; }
+.m-stagger.is-in > * {
+  opacity: 1; translate: 0 0; scale: 1;
+  transition: opacity var(--m-dur-l) var(--m-ease-out), translate var(--m-dur-l) var(--m-ease-out), scale var(--m-dur-l) var(--m-ease-out);
+  transition-delay: calc(min(var(--i, 0), 14) * var(--m-stagger));
+}
+/* lists re-render a lot: once revealed, new rows appear instantly (no replay) */
+.song, .tiles li { animation: none; }
+
+/* ---------- 3. Split-text headlines (words rise out of a mask) ---------- */
+.m-split .m-word { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.m-split .m-char { display: inline-block; }
+.m-split:not(.is-in) .m-char { translate: 0 105%; rotate: 8deg; }
+.m-split.is-in .m-char {
+  translate: 0 0; rotate: 0deg;
+  transition: translate var(--m-dur-xl) var(--m-ease-out), rotate var(--m-dur-xl) var(--m-ease-out);
+  transition-delay: calc(var(--ci) * 22ms);
+}
+
+/* ---------- 4. Parallax (motion.js sets the translate) ---------- */
+[data-m-parallax] { will-change: translate; }
+
+/* ---------- 5. Micro-interactions ---------- */
+/* press: every button squashes a little */
+.btn, .ctrl, .chip, .vibe, .tile, .preset, .like, .icon-btn, .album-play { transition-property: transform, translate, background-color, box-shadow, color, border-color, opacity; }
+.btn:active, .ctrl:active, .chip:active, .vibe:active, .preset:active, .icon-btn:active { transform: scale(0.95); transition-duration: var(--m-dur-xs); }
+/* magnetic buttons (motion.js moves them toward the cursor) */
+[data-m-magnetic] { transition: translate var(--m-dur-m) var(--m-ease-spring); }
+[data-m-magnetic].is-pulling { transition: translate 80ms linear; }
+/* cursor spotlight on cards */
+.song, .stats-grid li, .auth-card, .np-next button {
+  background-image: radial-gradient(260px circle at var(--sx, -300px) var(--sy, -300px), rgba(255, 255, 255, 0.09), transparent 60%);
+}
+/* heart burst */
+.m-burst { position: fixed; z-index: 120; pointer-events: none; font-size: 16px; color: var(--pink); animation: m-burst 800ms var(--m-ease-out) forwards; }
+@keyframes m-burst {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.4); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1) rotate(var(--rot)); }
+}
+/* scroll progress bar */
+.m-progress { position: fixed; top: 0; left: 0; right: 0; z-index: 60; height: 3px; transform-origin: 0 50%; transform: scaleX(0); background: var(--grad); box-shadow: 0 0 12px var(--pink); pointer-events: none; }
+/* play buttons breathe while music plays */
+body.is-playing .ctrl-main { animation: shift 4s linear infinite, m-breathe 1.6s ease-in-out infinite; }
+@keyframes m-breathe { 50% { box-shadow: 0 0 34px rgba(255, 46, 147, 0.75); } }
+
+/* ---------- 6. Page transitions (View Transitions API) ---------- */
+.topbar { view-transition-name: m-topbar; }
+.sidebar { view-transition-name: m-sidebar; }
+.player { view-transition-name: m-player; }
+.tabbar { view-transition-name: m-tabbar; }
+#scene { view-transition-name: m-scene; }
+::view-transition-old(root) { animation: m-page-out 260ms var(--m-ease-in) both; }
+::view-transition-new(root) { animation: m-page-in 520ms var(--m-ease-out) both; }
+@keyframes m-page-out { to { opacity: 0; transform: translateY(-14px) scale(0.99); filter: blur(4px); } }
+@keyframes m-page-in { from { opacity: 0; transform: translateY(26px) scale(0.99); filter: blur(6px); } }
+html.m-vt .page { animation: none; } /* the View Transition replaces the CSS page-in */
+
+/* ---------- Calm mode / reduced motion ---------- */
+html.m-calm [data-m-parallax] { translate: none !important; }
+html.m-calm .marquee-track { animation-play-state: paused; }
+html.m-calm .m-split .m-char { translate: none !important; rotate: none !important; }
+html.m-calm .topbar > *, html.m-calm .side-nav li, html.m-calm .side-mixes, html.m-calm .player { animation-duration: 1ms; }
+html.m-calm ::view-transition-old(root), html.m-calm ::view-transition-new(root) { animation-duration: 1ms; }
+@media (prefers-reduced-motion: reduce) {
+  .m-reveal:not(.is-in), .m-stagger:not(.is-in) > *, .m-split:not(.is-in) .m-char { opacity: 1; translate: none; scale: 1; rotate: none; }
+}
